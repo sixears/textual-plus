@@ -1,5 +1,5 @@
 module TextualPlus
-  ( PrintOut( toP ), parseTextual
+  ( PrintOut( toP ), parseTextual, parseTextM
   , __ERR__, __error__
   , bracket, bracket', b, b'
   , encompass, encompass'
@@ -15,7 +15,7 @@ import Prelude  ( error )
 
 -- base --------------------------------
 
-import Control.Monad  ( return )
+import Control.Monad  ( MonadFail( fail ), return )
 import Data.Function  ( ($) )
 import Data.String    ( String )
 import Data.Typeable  ( Typeable, typeOf )
@@ -36,11 +36,11 @@ import Control.Monad.Except  ( MonadError, throwError )
 
 -- text --------------------------------
 
-import Data.Text     ( Text )
+import Data.Text  ( Text )
 
 -- tfmt --------------------------------
 
-import Text.Fmt  ( fmtT )
+import Text.Fmt  ( fmt, fmtT )
 
 --------------------------------------------------------------------------------
 
@@ -166,5 +166,16 @@ g = guillemet
 
 g' ∷ Text -> Text
 g' = guillemet'
+
+----------------------------------------
+
+{- | `parseText`, but in a Monadic context, so that a parse failure becomes a
+     `fail`
+ -}
+parseTextM ∷ (Textual α, MonadFail η) ⇒ Text → Text → η α
+parseTextM s t =
+  case parseText t of
+    Parsed    mac → return mac
+    Malformed _ e → fail $ [fmt|failed to parse %t: %T (%t)|] s e t
 
 -- that's all, folks! ----------------------------------------------------------
