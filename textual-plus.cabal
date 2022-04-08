@@ -10,7 +10,7 @@ name:                textual-plus
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             1.0.2.0
+version:             1.0.2.1
 
 -- A short (one-line) description of the package.
 synopsis:            manage info.yaml
@@ -68,7 +68,7 @@ library
   -- Other library packages from which modules are imported.
   build-depends:       base, base-unicode-symbols, data-textual, mtl, text
 
-                     , tfmt >= 0.2.4.0
+                     , tfmt >= 0.2.5.0
 
   -- Directories containing source files.
   hs-source-dirs:      src

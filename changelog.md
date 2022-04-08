@@ -1,3 +1,7 @@
+1.0.2.1 2022-04-07
+==================
+- upgrade tfmt to 0.2.5.0
+
 1.0.2.0 2021-06-11
 ==================
 - add parseTextM (from Fluffy.Textual)
