@@ -5,7 +5,7 @@
     nixpkgs.url      = "github:nixos/nixpkgs/be44bf67"; # nixos-22.05 2022-10-15
     build-utils.url  = "github:sixears/flake-build-utils/r1.0.0.11";
 
-    tfmt.url         = "github:sixears/tfmt/r0.2.7.11";
+    tfmt.url         = "github:sixears/tfmt/r0.2.7.12";
   };
 
   outputs = { self, nixpkgs, build-utils
