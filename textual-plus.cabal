@@ -10,7 +10,7 @@ name:                textual-plus
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             1.0.2.27
+version:             1.1.0.0
 
 -- A short (one-line) description of the package.
 synopsis:            manage info.yaml
@@ -54,9 +54,11 @@ library
   -- modules included in this library but not exported.
   other-modules:
 
-  default-extensions: FlexibleInstances
+  default-extensions: BangPatterns
+                    , FlexibleInstances
                     , NoImplicitPrelude
                     , OverloadedStrings
+                    , PatternSynonyms
                     , QuasiQuotes
                     , RankNTypes
                     , UnicodeSyntax
@@ -66,9 +68,12 @@ library
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base, base-unicode-symbols, data-textual, mtl, text
+  build-depends:       base, base-unicode-symbols, bytestring, data-textual, mtl
+                     , parsers, tasty-quickcheck, text, text-printer
 
-                     , tfmt >= 0.2.5.0
+                     , base0        >= 0.0.1.14
+                     , more-unicode >= 0.0.17.12
+                     , tfmt         >= 0.2.5.0
 
   -- Directories containing source files.
   hs-source-dirs:      src

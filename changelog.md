@@ -1,3 +1,7 @@
+1.1.0.0 2023-04-14
+==================
+- Integrate work from acct; including TextualPlus typeclass
+
 1.0.2.27 2022-11-20
 ===================
 - has-callstack->1.0.1.19
