@@ -1,5 +1,7 @@
+{-| tools for working with Text, including parsing & human-printing -}
 module TextualPlus
-  ( PrintOut( toP ), parseTextual, parseTextM
+  ( ParseableInput( tparse, tparse' )
+  , PrintOut( toP ), parseTextual, parseTextM
   , TextualPlus(..), parse, parseString
   , __ERR__, __error__
   , bracket, bracket', b, b'
@@ -14,6 +16,7 @@ module TextualPlus
   )
 where
 
+-- Pragmata ------------------------------------------------
 
 import Base0
 import Prelude  ( error )
@@ -41,6 +44,8 @@ import Data.Textual  ( Parsed( Malformed, Parsed ), toUtf8 )
 import Data.MoreUnicode.Applicative  ( (⋪), (⋫) )
 import Data.MoreUnicode.Functor      ( (⊳) )
 import Data.MoreUnicode.Maybe        ( pattern 𝕵, pattern 𝕹 )
+import Data.MoreUnicode.String       ( 𝕊 )
+import Data.MoreUnicode.Text         ( 𝕋 )
 
 -- parsers -----------------------------
 
@@ -57,7 +62,7 @@ import Test.Tasty.QuickCheck  ( Property, (===) )
 import qualified  Data.Text       as  Text
 import qualified  Data.Text.Lazy  as  TL
 
-import Data.Text                ( Text, intercalate )
+import Data.Text                ( intercalate )
 import Data.Text.Lazy.Encoding  ( decodeUtf8 )
 
 -- text-printer ------------------------
@@ -68,15 +73,29 @@ import qualified  Text.Printer  as  P
 
 import Text.Fmt  ( fmt, fmtT )
 
+------------------------------------------------------------
+--                     local imports                      --
+------------------------------------------------------------
+
+import TextualPlus.Error.TextualParseError  ( AsTextualParseError
+                                            , TextualParseError, tparseToME )
+
 --------------------------------------------------------------------------------
 
+{-| Just as `Data.Textual.Textual`, but we add some more capabalities -}
+class TextualPlus α where
+  textual' ∷ (MonadFail μ, CharParsing μ) ⇒ μ α
+
+------------------------------------------------------------
+
+{-| types that may be printed to -}
 class PrintOut σ where
   toP ∷ Printable ρ ⇒ ρ → σ
 
-instance PrintOut Text where
+instance PrintOut 𝕋 where
   toP = toText
 
-instance PrintOut String where
+instance PrintOut 𝕊 where
   toP = toString
 
 {- | Parse a printable value, give user-friendly error messages.
@@ -106,109 +125,114 @@ __ERR__ ∷ Printable ρ ⇒ ρ → α
 __ERR__ s = error $ toString s
 
 {- | throw an error -}
-__error__ ∷ Text → α
+__error__ ∷ 𝕋 → α
 __error__ = __ERR__
 
 {- | adorn text with a prefix and a suffix -}
-encompass ∷ Printable ρ ⇒ Text → Text → ρ → Text
+encompass ∷ Printable ρ ⇒ 𝕋 → 𝕋 → ρ → 𝕋
 encompass pfx sfx t = pfx ⊕ toText t ⊕ sfx
 
-encompass' ∷ Text → Text → Text → Text
+-- | `encompass`, specialized to `𝕋`
+encompass' ∷ 𝕋 → 𝕋 → 𝕋 → 𝕋
 encompass' = encompass
 
-{- | adorn text with (the same) prefix suffix -}
-surround ∷ Printable ρ ⇒ Text → ρ → Text
+-- | adorn text with (the same) prefix suffix
+surround ∷ Printable ρ ⇒ 𝕋 → ρ → 𝕋
 surround x = encompass x x
 
-surround' ∷ Text → Text → Text
+-- | `surround` specialized to 𝕋
+surround' ∷ 𝕋 → 𝕋 → 𝕋
 surround' = surround
 
-{- | surround text with (single) quotes -}
-quote ∷ Printable ρ ⇒ ρ -> Text
+-- | surround text with (single) quotes
+quote ∷ Printable ρ ⇒ ρ -> 𝕋
 quote = surround "'"
 
-quote' ∷ Text -> Text
+-- | `quote` specialized to 𝕋
+quote' ∷ 𝕋 -> 𝕋
 quote' = quote
 
-{- | short alias for `quote` -}
-q ∷ Printable ρ ⇒ ρ -> Text
+-- | short alias for `quote`
+q ∷ Printable ρ ⇒ ρ -> 𝕋
 q = quote
 
-q' ∷ Text -> Text
+-- | short alias for `quote'`
+q' ∷ 𝕋 -> 𝕋
 q' = quote'
 
-{- | surround text with (double) quotes -}
-qquote ∷ Printable ρ ⇒ ρ -> Text
+-- | surround text with (double) quotes
+qquote ∷ Printable ρ ⇒ ρ -> 𝕋
 qquote = surround "\""
 
-qquote' ∷ Text -> Text
+-- | `qquote` specialized to 𝕋
+qquote' ∷ 𝕋 -> 𝕋
 qquote' = qquote
 
 {- | short alias for `qquote` -}
-qq ∷ Printable ρ ⇒ ρ -> Text
+qq ∷ Printable ρ ⇒ ρ -> 𝕋
 qq = qquote
 
-qq' ∷ Text -> Text
+-- | short alias for `qquote'`
+qq' ∷ 𝕋 -> 𝕋
 qq' = qquote'
 
 {- | surround text with parentheses -}
-parenthesize ∷ Printable ρ ⇒ ρ → Text
+parenthesize ∷ Printable ρ ⇒ ρ → 𝕋
 parenthesize = encompass "(" ")"
 
-parenthesize' ∷ Text → Text
+-- | `parenthesize` specialized to 𝕋
+parenthesize' ∷ 𝕋 → 𝕋
 parenthesize' = parenthesize
 
 {- | short alias for `parenthesize` -}
-p ∷ Printable ρ ⇒ ρ -> Text
+p ∷ Printable ρ ⇒ ρ -> 𝕋
 p = parenthesize
 
-p' ∷ Text -> Text
+-- | short alias for `parenthesize'`
+p' ∷ 𝕋 -> 𝕋
 p' = parenthesize'
 
 {- | surround text with brackets -}
-bracket ∷ Printable ρ ⇒ ρ → Text
+bracket ∷ Printable ρ ⇒ ρ → 𝕋
 bracket = encompass "[" "]"
 
-bracket' ∷ Text → Text
+-- | `bracket`, specialized to `𝕋`
+bracket' ∷ 𝕋 → 𝕋
 bracket' = bracket
 
 {- | short alias for `bracket` -}
-b ∷ Printable ρ ⇒ ρ -> Text
+b ∷ Printable ρ ⇒ ρ -> 𝕋
 b = bracket
 
-b' ∷ Text -> Text
+-- | short alias for `bracket'`
+b' ∷ 𝕋 -> 𝕋
 b' = bracket'
 
 {- | surround text with guillemets -}
-guillemet ∷ Printable ρ ⇒ ρ → Text
+guillemet ∷ Printable ρ ⇒ ρ → 𝕋
 guillemet = encompass "«" "»"
 
-guillemet' ∷ Text → Text
+-- | `guillemet`, specialized to 𝕋
+guillemet' ∷ 𝕋 → 𝕋
 guillemet' = guillemet
 
 {- | short alias for `guillemet` -}
-g ∷ Printable ρ ⇒ ρ -> Text
+g ∷ Printable ρ ⇒ ρ -> 𝕋
 g = guillemet
 
-g' ∷ Text -> Text
+-- | short alias for `guillemet'`
+g' ∷ 𝕋 -> 𝕋
 g' = guillemet'
 
 ----------------------------------------
 
-{- | `parseText`, but in a Monadic context, so that a parse failure becomes a
-     `fail`
- -}
-parseTextM ∷ (TextualPlus α, MonadFail η) ⇒ Text → Text → η α
-parseTextM s t =
-  case parseText t of
-    Parsed    mac → return mac
-    Malformed _ e → fail $ [fmt|failed to parse %t: %T (%t)|] s e t
-
+{-| frankly, I forget why I re-implemented this, but I'm sure there was a good
+    reason -}
 data Parser α =
   Parser { runParser ∷ ∀ r .
-                       [String] → Word → String
-                     → ([String] → Word → String → α → Parsed r)
-                     → ([String] → Word → String → String → Parsed r)
+                       [𝕊] → Word → 𝕊
+                     → ([𝕊] → Word → 𝕊 → α → Parsed r)
+                     → ([𝕊] → Word → 𝕊 → 𝕊 → Parsed r)
                      → Parsed r }
 
 instance Functor Parser where
@@ -302,33 +326,66 @@ instance MonadFail Parser where
   fail = unexpected
   {-# INLINE fail #-}
 
-parse ∷ Parser α → String → Parsed α
+------------------------------------------------------------
+
+{-| run a `Parser` -}
+parse ∷ Parser α → 𝕊 → Parsed α
 parse prsr i = runParser prsr [] 0 i (\ _  _ _ a → Parsed a)
                                      (\ ls _ _ e → Malformed (reverse ls) e)
 
--- | Parse a 'String' to extract the 'Textual' value.
-parseString ∷ TextualPlus α ⇒ String → Parsed α
+--------------------
+
+-- | Parse a `𝕊` to extract the `Data.Textual.Textual` value.
+parseString ∷ TextualPlus α ⇒ 𝕊 → Parsed α
 parseString = parse $ textual' ⋪ eof
 {-# INLINE parseString #-}
 
--- | Parse a 'Text.Text' to extract the 'Textual' value.
-parseText ∷ TextualPlus α ⇒ Text.Text → Parsed α
+--------------------
+
+-- | Parse a '𝕋' to extract the `Data.Textual.Textual` value.
+parseText ∷ TextualPlus α ⇒ 𝕋 → Parsed α
 parseText = parseString . Text.unpack
 {-# INLINE parseText #-}
 
+--------------------
+
+-- | Parse a 'TL.Text' to extract the `Data.Textual.Textual` value.
 parseLazyText ∷ TextualPlus α ⇒ TL.Text → Parsed α
 parseLazyText = parseString . TL.unpack
 {-# INLINE parseLazyText #-}
 
--- | Decode and parse a UTF-8 'BS.ByteString' to extract the 'Textual' value.
+--------------------
+
+{-| decode and parse a UTF-8 'BS.ByteString' to extract the
+    `Data.Textual.Textual` value -}
 parseUtf8 ∷ TextualPlus α ⇒ BS.ByteString → Parsed α
 parseUtf8 = parseLazyText . decodeUtf8 . BL.fromStrict
 {-# INLINE parseUtf8 #-}
 
+----------------------------------------
+
+{- | `parseText`, but in a Monadic context, so that a parse failure becomes a
+     `fail`
+ -}
+parseTextM ∷ (TextualPlus α, MonadFail η) ⇒ 𝕋 → 𝕋 → η α
+parseTextM s t =
+  case parseText t of
+    Parsed    mac → return mac
+    Malformed _ e → fail $ [fmt|failed to parse %t: %T (%t)|] s e t
+
 ------------------------------------------------------------
 
-class TextualPlus α where
-  textual' ∷ (MonadFail μ, CharParsing μ) ⇒ μ α
+{-| types that may be parsed to produce some `TextualPlus` @α@ -}
+class ParseableInput α where
+  tparse  ∷ (TextualPlus β, AsTextualParseError ε, MonadError ε η) ⇒ α → η β
+  tparse' ∷ (TextualPlus β, MonadError TextualParseError η) ⇒ α → η β
+  tparse' = tparse
+
+instance ParseableInput 𝕊 where
+  tparse = tparseToME ∘ parseString
+
+instance ParseableInput 𝕋 where
+  tparse = tparseToME ∘ parseText
 
 ------------------------------------------------------------
 
@@ -351,10 +408,10 @@ newtype ShowEqPrintable α = ShowEqPrintable α
 instance Printable α ⇒ Show (ShowEqPrintable α) where
   show (ShowEqPrintable a) = toString a
 
-{- | Pronounced 'test', this tests for equality; it's a variant of `(@=?)` that
-     uses `Printable` rather than `Show` for error messages; note that the 'got'
-     or 'actual' value is the last argument, to allow for easier partial
-     application.
+{- | Pronounced "test", this tests for equality; it's a variant of
+     `(Test.Tasty.HUnit.@=?)` that uses `Printable` rather than `Show` for error
+     messages; note that the "got" or "actual" value is the last argument, to
+     allow for easier partial application.
  -}
 {-
 infix 1 ≟
@@ -368,16 +425,20 @@ infix 4 ≣
 (≣) ∷ (Eq α, Printable α, HasCallStack) ⇒ α → α → Property
 x ≣ y = ShowEqPrintable x === ShowEqPrintable y
 
+{-| property test that parsing & printing printing a random 𝕊 is invertible -}
 propInvertibleString ∷ (Eq α, Printable α, TextualPlus α) ⇒ α → Property
 propInvertibleString d = P (parseString (toString d)) ≣ P (Parsed d)
 
 --------------------
 
+{-| property test that parsing & printing printing a random 𝕋 is invertible -}
 propInvertibleText ∷ (Eq α, Printable α, TextualPlus α) ⇒ α → Property
 propInvertibleText d = P (parseText (toText d)) ≣ P (Parsed d)
 
 --------------------
 
+{-| property test that parsing & printing printing a random ByteString as UTF8
+    is invertible -}
 propInvertibleUtf8 ∷ (Eq α, Printable α, TextualPlus α) ⇒ α → Property
 propInvertibleUtf8 d = P (parseUtf8 (toUtf8 d)) ≣ P (Parsed d)
 

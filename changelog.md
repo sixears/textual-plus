@@ -1,3 +1,9 @@
+1.1.1.0 2023-05-29
+==================
+- +TextualPlusError
+- +ParsableInput
+- +tparseToME, tparseToME'
+
 1.1.0.0 2023-04-14
 ==================
 - Integrate work from acct; including TextualPlus typeclass
