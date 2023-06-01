@@ -1,3 +1,7 @@
+1.1.2.0 2023-05-30
+==================
+- export parseText, parseLazyText, parseUtf8
+
 1.1.1.0 2023-05-29
 ==================
 - +TextualPlusError

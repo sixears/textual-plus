@@ -2,7 +2,7 @@
 module TextualPlus
   ( ParseableInput( tparse, tparse' )
   , PrintOut( toP ), parseTextual, parseTextM
-  , TextualPlus(..), parse, parseString
+  , TextualPlus(..), parse, parseString, parseText, parseLazyText, parseUtf8
   , __ERR__, __error__
   , bracket, bracket', b, b'
   , encompass, encompass'
