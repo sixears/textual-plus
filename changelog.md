@@ -1,3 +1,7 @@
+1.1.3.0 2023-06-13
+==================
+- +checkT
+
 1.1.2.0 2023-05-30
 ==================
 - export parseText, parseLazyText, parseUtf8

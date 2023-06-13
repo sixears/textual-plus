@@ -13,6 +13,7 @@ module TextualPlus
   , surround, surround'
 
   , propInvertibleString, propInvertibleText, propInvertibleUtf8
+  , checkT
   )
 where
 
@@ -42,6 +43,7 @@ import Data.Textual  ( Parsed( Malformed, Parsed ), toUtf8 )
 -- more-unicode ------------------------
 
 import Data.MoreUnicode.Applicative  ( (⋪), (⋫) )
+import Data.MoreUnicode.Either       ( pattern 𝕽 )
 import Data.MoreUnicode.Functor      ( (⊳) )
 import Data.MoreUnicode.Maybe        ( pattern 𝕵, pattern 𝕹 )
 import Data.MoreUnicode.String       ( 𝕊 )
@@ -53,6 +55,14 @@ import Text.Parser.Char         ( CharParsing, satisfy, string )
 import Text.Parser.Combinators  ( Parsing( notFollowedBy, skipMany, skipSome )
                                 , (<?>), eof, try, unexpected )
 
+-- tasty -------------------------------
+
+import Test.Tasty  ( TestTree )
+
+-- tasty-hunit -------------------------
+
+import Test.Tasty.HUnit  ( (@=?), testCase )
+
 -- tasty-quickcheck --------------------
 
 import Test.Tasty.QuickCheck  ( Property, (===) )
@@ -62,7 +72,7 @@ import Test.Tasty.QuickCheck  ( Property, (===) )
 import qualified  Data.Text       as  Text
 import qualified  Data.Text.Lazy  as  TL
 
-import Data.Text                ( intercalate )
+import Data.Text                ( intercalate, unpack )
 import Data.Text.Lazy.Encoding  ( decodeUtf8 )
 
 -- text-printer ------------------------
@@ -78,7 +88,9 @@ import Text.Fmt  ( fmt, fmtT )
 ------------------------------------------------------------
 
 import TextualPlus.Error.TextualParseError  ( AsTextualParseError
-                                            , TextualParseError, tparseToME )
+                                            , TextualParseError
+                                            , tparseToME, tparseToME'
+                                            )
 
 --------------------------------------------------------------------------------
 
@@ -441,5 +453,12 @@ propInvertibleText d = P (parseText (toText d)) ≣ P (Parsed d)
     is invertible -}
 propInvertibleUtf8 ∷ (Eq α, Printable α, TextualPlus α) ⇒ α → Property
 propInvertibleUtf8 d = P (parseUtf8 (toUtf8 d)) ≣ P (Parsed d)
+
+----------------------------------------
+
+checkT ∷ (TextualPlus α, Eq α, Show α) ⇒ 𝕋 → α → TestTree
+checkT input exp =
+  testCase ("parseText: " ⊕ unpack input) $
+    𝕽 exp @=? (tparseToME' ∘ parseText) input
 
 -- that's all, folks! ----------------------------------------------------------
