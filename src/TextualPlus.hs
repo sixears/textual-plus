@@ -1,6 +1,6 @@
 {-| tools for working with Text, including parsing & human-printing -}
 module TextualPlus
-  ( ParseableInput( tparse, tparse' )
+  ( ParseableInput( tparse, tparse' ), Parser
   , PrintOut( toP ), parseTextual, parseTextM
   , TextualPlus(..), parse, parseString, parseText, parseLazyText, parseUtf8
   , __ERR__, __error__
@@ -13,7 +13,7 @@ module TextualPlus
   , surround, surround'
 
   , propInvertibleString, propInvertibleText, propInvertibleUtf8
-  , checkT
+  , checkT, parseT
   )
 where
 
@@ -456,9 +456,25 @@ propInvertibleUtf8 d = P (parseUtf8 (toUtf8 d)) ≣ P (Parsed d)
 
 ----------------------------------------
 
+{-| test helper that parsing "input" produces an expected value -}
 checkT ∷ (TextualPlus α, Eq α, Show α) ⇒ 𝕋 → α → TestTree
 checkT input exp =
   testCase ("parseText: " ⊕ unpack input) $
     𝕽 exp @=? (tparseToME' ∘ parseText) input
+
+----------------------------------------
+
+{-| Parse a value with a `Parser`; fail in a `MonadFail` context.
+    `tname` is a typename to help the errmsg; use an empty string to silence.
+-}
+parseT ∷ (Printable τ, MonadFail η) ⇒ Parser α → 𝕋 → τ → η α
+parseT prsr tname (toText → t) =
+  case TextualPlus.parse prsr (unpack t) of
+    Parsed    x → return x
+    Malformed es e → case tname of
+                       "" → fail $ [fmt|failed to parse '%t': %T (%t)|]
+                                   t e (intercalate "‖" $ toText ⊳ es)
+                       _  → fail $ [fmt|failed to parse '%t' as %t: %T (%t)|]
+                                   t tname e (intercalate "‖" $ toText ⊳ es)
 
 -- that's all, folks! ----------------------------------------------------------
