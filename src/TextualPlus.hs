@@ -1,96 +1,123 @@
+{-# LANGUAGE UnicodeSyntax #-}
 {-| tools for working with Text, including parsing & human-printing -}
 module TextualPlus
-  ( ParseableInput( tparse, tparse' ), Parser
-  , PrintOut( toP ), parseTextual, parseTextM
-  , TextualPlus(..), parse, parseString, parseText, parseLazyText, parseUtf8
-  , __ERR__, __error__
-  , bracket, bracket', b, b'
-  , encompass, encompass'
-  , guillemet, guillemet', g, g'
-  , parenthesize, parenthesize', p, p'
-  , quote, quote', q, q'
-  , qquote, qquote', qq, qq'
-  , surround, surround'
-
-  , propInvertibleString, propInvertibleText, propInvertibleUtf8
-  , checkT, parseT
-  )
-where
+  ( ParseableInput(tparse, tparse')
+  , Parser
+  , PrintOut(toP)
+  , TextualPlus(..)
+  , __ERR__
+  , __error__
+  , b
+  , b'
+  , bracket
+  , bracket'
+  , checkT
+  , encompass
+  , encompass'
+  , g
+  , g'
+  , guillemet
+  , guillemet'
+  , p
+  , p'
+  , parenthesize
+  , parenthesize'
+  , parse
+  , parseLazyText
+  , parseString
+  , parseT
+  , parseText
+  , parseTextM
+  , parseTextual
+  , parseUtf8
+  , propInvertibleString
+  , propInvertibleText
+  , propInvertibleUtf8
+  , q
+  , q'
+  , qq
+  , qq'
+  , qquote
+  , qquote'
+  , quote
+  , quote'
+  , surround
+  , surround'
+  ) where
 
 -- Pragmata ------------------------------------------------
 
 import Base0
-import Prelude  ( error )
+import Prelude ( error )
 
 -- base --------------------------------
 
-import Control.Applicative  ( Alternative( (<|>), empty ) )
-import Control.Monad        ( MonadFail( fail ) )
-import Data.Functor         ( Functor )
-import Data.List            ( length, reverse, stripPrefix )
-import Data.Typeable        ( typeOf )
-import Data.Word            ( Word )
+import Control.Applicative ( Alternative(empty, (<|>)) )
+import Control.Monad       ( MonadFail(fail) )
+import Data.Functor        ( Functor )
+import Data.List           ( length, reverse, stripPrefix )
+import Data.Typeable       ( typeOf )
+import Data.Word           ( Word )
 
 -- bytestring --------------------------
 
-import qualified  Data.ByteString       as  BS
-import qualified  Data.ByteString.Lazy  as  BL
+import Data.ByteString      qualified as BS
+import Data.ByteString.Lazy qualified as BL
 
 -- data-textual ------------------------
 
-import Data.Textual  ( Parsed( Malformed, Parsed ), toUtf8 )
+import Data.Textual ( Parsed(Malformed, Parsed), toUtf8 )
 
 -- more-unicode ------------------------
 
-import Data.MoreUnicode.Applicative  ( (⋪), (⋫) )
-import Data.MoreUnicode.Either       ( pattern 𝕽 )
-import Data.MoreUnicode.Functor      ( (⊳) )
-import Data.MoreUnicode.Maybe        ( pattern 𝕵, pattern 𝕹 )
-import Data.MoreUnicode.String       ( 𝕊 )
-import Data.MoreUnicode.Text         ( 𝕋 )
+import Data.MoreUnicode.Applicative ( (⋪), (⋫) )
+import Data.MoreUnicode.Either      ( pattern 𝕽 )
+import Data.MoreUnicode.Functor     ( (⊳) )
+import Data.MoreUnicode.Maybe       ( pattern 𝕵, pattern 𝕹 )
+import Data.MoreUnicode.String      ( 𝕊 )
+import Data.MoreUnicode.Text        ( 𝕋 )
 
 -- parsers -----------------------------
 
-import Text.Parser.Char         ( CharParsing, satisfy, string )
-import Text.Parser.Combinators  ( Parsing( notFollowedBy, skipMany, skipSome )
-                                , (<?>), eof, try, unexpected )
+import Text.Parser.Char        ( CharParsing, satisfy, string )
+import Text.Parser.Combinators ( Parsing(notFollowedBy, skipMany, skipSome),
+                                 eof, try, unexpected, (<?>) )
 
 -- tasty -------------------------------
 
-import Test.Tasty  ( TestTree )
+import Test.Tasty ( TestTree )
 
 -- tasty-hunit -------------------------
 
-import Test.Tasty.HUnit  ( (@=?), testCase )
+import Test.Tasty.HUnit ( testCase, (@=?) )
 
 -- tasty-quickcheck --------------------
 
-import Test.Tasty.QuickCheck  ( Property, (===) )
+import Test.Tasty.QuickCheck ( Property, (===) )
 
 -- text --------------------------------
 
-import qualified  Data.Text       as  Text
-import qualified  Data.Text.Lazy  as  TL
+import Data.Text      qualified as Text
+import Data.Text.Lazy qualified as TL
 
-import Data.Text                ( intercalate, unpack )
-import Data.Text.Lazy.Encoding  ( decodeUtf8 )
+import Data.Text               ( intercalate, unpack )
+import Data.Text.Lazy.Encoding ( decodeUtf8 )
 
 -- text-printer ------------------------
 
-import qualified  Text.Printer  as  P
+import Text.Printer qualified as P
 
 -- tfmt --------------------------------
 
-import Text.Fmt  ( fmt, fmtT )
+import Text.Fmt ( fmt, fmtT )
 
 ------------------------------------------------------------
 --                     local imports                      --
 ------------------------------------------------------------
 
-import TextualPlus.Error.TextualParseError  ( AsTextualParseError
-                                            , TextualParseError
-                                            , tparseToME, tparseToME'
-                                            )
+import TextualPlus.Error.TextualParseError ( AsTextualParseError,
+                                             TextualParseError, tparseToME,
+                                             tparseToME' )
 
 --------------------------------------------------------------------------------
 
@@ -157,35 +184,35 @@ surround' ∷ 𝕋 → 𝕋 → 𝕋
 surround' = surround
 
 -- | surround text with (single) quotes
-quote ∷ Printable ρ ⇒ ρ -> 𝕋
+quote ∷ Printable ρ ⇒ ρ → 𝕋
 quote = surround "'"
 
 -- | `quote` specialized to 𝕋
-quote' ∷ 𝕋 -> 𝕋
+quote' ∷ 𝕋 → 𝕋
 quote' = quote
 
 -- | short alias for `quote`
-q ∷ Printable ρ ⇒ ρ -> 𝕋
+q ∷ Printable ρ ⇒ ρ → 𝕋
 q = quote
 
 -- | short alias for `quote'`
-q' ∷ 𝕋 -> 𝕋
+q' ∷ 𝕋 → 𝕋
 q' = quote'
 
 -- | surround text with (double) quotes
-qquote ∷ Printable ρ ⇒ ρ -> 𝕋
+qquote ∷ Printable ρ ⇒ ρ → 𝕋
 qquote = surround "\""
 
 -- | `qquote` specialized to 𝕋
-qquote' ∷ 𝕋 -> 𝕋
+qquote' ∷ 𝕋 → 𝕋
 qquote' = qquote
 
 {- | short alias for `qquote` -}
-qq ∷ Printable ρ ⇒ ρ -> 𝕋
+qq ∷ Printable ρ ⇒ ρ → 𝕋
 qq = qquote
 
 -- | short alias for `qquote'`
-qq' ∷ 𝕋 -> 𝕋
+qq' ∷ 𝕋 → 𝕋
 qq' = qquote'
 
 {- | surround text with parentheses -}
@@ -197,11 +224,11 @@ parenthesize' ∷ 𝕋 → 𝕋
 parenthesize' = parenthesize
 
 {- | short alias for `parenthesize` -}
-p ∷ Printable ρ ⇒ ρ -> 𝕋
+p ∷ Printable ρ ⇒ ρ → 𝕋
 p = parenthesize
 
 -- | short alias for `parenthesize'`
-p' ∷ 𝕋 -> 𝕋
+p' ∷ 𝕋 → 𝕋
 p' = parenthesize'
 
 {- | surround text with brackets -}
@@ -213,11 +240,11 @@ bracket' ∷ 𝕋 → 𝕋
 bracket' = bracket
 
 {- | short alias for `bracket` -}
-b ∷ Printable ρ ⇒ ρ -> 𝕋
+b ∷ Printable ρ ⇒ ρ → 𝕋
 b = bracket
 
 -- | short alias for `bracket'`
-b' ∷ 𝕋 -> 𝕋
+b' ∷ 𝕋 → 𝕋
 b' = bracket'
 
 {- | surround text with guillemets -}
@@ -229,23 +256,19 @@ guillemet' ∷ 𝕋 → 𝕋
 guillemet' = guillemet
 
 {- | short alias for `guillemet` -}
-g ∷ Printable ρ ⇒ ρ -> 𝕋
+g ∷ Printable ρ ⇒ ρ → 𝕋
 g = guillemet
 
 -- | short alias for `guillemet'`
-g' ∷ 𝕋 -> 𝕋
+g' ∷ 𝕋 → 𝕋
 g' = guillemet'
 
 ----------------------------------------
 
 {-| frankly, I forget why I re-implemented this, but I'm sure there was a good
     reason -}
-data Parser α =
-  Parser { runParser ∷ ∀ r .
-                       [𝕊] → Word → 𝕊
-                     → ([𝕊] → Word → 𝕊 → α → Parsed r)
-                     → ([𝕊] → Word → 𝕊 → 𝕊 → Parsed r)
-                     → Parsed r }
+data Parser α = Parser { runParser :: forall r. [𝕊] -> Word -> 𝕊 -> ([𝕊] -> Word -> 𝕊 -> α -> Parsed r) -> ([𝕊] -> Word -> 𝕊 -> 𝕊 -> Parsed r) -> Parsed r
+                       }
 
 instance Functor Parser where
   fmap f prsr = Parser $ \ ls n i c h →
@@ -389,8 +412,10 @@ parseTextM s t =
 
 {-| types that may be parsed to produce some `TextualPlus` @α@ -}
 class ParseableInput α where
-  tparse  ∷ (TextualPlus β, AsTextualParseError ε, MonadError ε η) ⇒ α → η β
-  tparse' ∷ (TextualPlus β, MonadError TextualParseError η) ⇒ α → η β
+  tparse  ∷ ∀ ε β α η .
+            (TextualPlus β, AsTextualParseError ε, MonadError ε η) ⇒ α → η β
+  tparse' ∷ ∀ β α η .
+            (TextualPlus β, MonadError TextualParseError η) ⇒ α → η β
   tparse' = tparse
 
 instance ParseableInput 𝕊 where
@@ -402,7 +427,7 @@ instance ParseableInput 𝕋 where
 ------------------------------------------------------------
 
 newtype P α = P α
-  deriving Eq
+  deriving (Eq)
 
 instance Printable α ⇒ Printable (P (Parsed α)) where
   print (P (Parsed a))       = P.string (toString a)
@@ -415,7 +440,7 @@ instance Printable α ⇒ Printable (P (Parsed α)) where
 --------------------
 
 newtype ShowEqPrintable α = ShowEqPrintable α
-  deriving Eq
+  deriving (Eq)
 
 instance Printable α ⇒ Show (ShowEqPrintable α) where
   show (ShowEqPrintable a) = toString a
@@ -467,7 +492,7 @@ checkT input exp =
 {-| Parse a value with a `Parser`; fail in a `MonadFail` context.
     `tname` is a typename to help the errmsg; use an empty string to silence.
 -}
-parseT ∷ (Printable τ, MonadFail η) ⇒ Parser α → 𝕋 → τ → η α
+parseT ∷ ∀ α τ η . (Printable τ, MonadFail η) ⇒ Parser α → 𝕋 → τ → η α
 parseT prsr tname (toText → t) =
   case TextualPlus.parse prsr (unpack t) of
     Parsed    x → return x
